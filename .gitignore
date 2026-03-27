@@ -1,0 +1,5 @@
+node_modules/
+dist/
+tasks.db
+.claude/
+.mcp.json

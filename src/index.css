@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gray-50 text-gray-900;
+}
+
+@keyframes popIn {
+  0%   { transform: scale(0.5); opacity: 0; }
+  70%  { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Dog animations — NO scaleX here; facing is handled by the outer wrapper div */
+@keyframes dogWalk {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+@keyframes dogRun {
+  0%, 100% { transform: translateY(0); }
+  25%      { transform: translateY(-5px); }
+  75%      { transform: translateY(-2px); }
+}
+@keyframes dogEat {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(-12deg); }
+}
+@keyframes dogSleep {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.75; }
+}
+@keyframes dogPoop {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(4px); }
+}
+
+.dog--walking  { animation: dogWalk  0.5s  ease-in-out infinite; }
+.dog--running  { animation: dogRun   0.25s ease-in-out infinite; }
+.dog--eating   { animation: dogEat   0.45s ease-in-out infinite; }
+.dog--sleeping { animation: dogSleep 2s    ease-in-out infinite; }
+.dog--pooping  { animation: dogPoop  0.6s  ease-in-out infinite; }
