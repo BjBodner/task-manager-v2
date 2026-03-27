@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow - ניהול משימות</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; background: #f9fafb; color: #111827; height: 100vh; overflow: hidden; }
+
+/* ── Layout ── */
+.app { display: flex; height: 100vh; }
+.sidebar { width: 14rem; background: #fff; border-left: 1px solid #e5e7eb; display: flex; flex-direction: column; padding: 1rem; flex-shrink: 0; overflow-y: auto; }
+.main { flex: 1; overflow: hidden; }
+
+/* ── Sidebar ── */
+.logo { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; margin-bottom: 0.75rem; }
+.logo-icon { font-size: 1.5rem; }
+.logo-text { font-weight: 700; color: #1f2937; font-size: 1.125rem; }
+
+.btn-add { width: 100%; background: #2563eb; color: #fff; border: none; border-radius: 0.75rem; padding: 0.625rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: center; gap: 0.375rem; transition: background 0.15s; }
+.btn-add:hover { background: #1d4ed8; }
+.btn-add:active { background: #1e40af; }
+.btn-add .plus { font-size: 1.125rem; line-height: 1; }
+
+.cat-heading { font-size: 0.75rem; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0 0.5rem; margin-bottom: 0.5rem; }
+.cat-list { display: flex; flex-direction: column; gap: 0.25rem; }
+.cat-btn { width: 100%; display: flex; align-items: center; gap: 0.625rem; padding: 0.5rem 0.75rem; border-radius: 0.75rem; font-size: 0.875rem; border: none; background: none; cursor: pointer; transition: all 0.15s; color: #4b5563; text-align: right; }
+.cat-btn:hover { background: #f3f4f6; }
+.cat-btn.active { background: #eff6ff; color: #1d4ed8; font-weight: 500; }
+.cat-btn .icon { font-size: 1rem; flex-shrink: 0; }
+.cat-btn .label { flex: 1; text-align: right; }
+.cat-btn .count { font-size: 0.75rem; border-radius: 9999px; padding: 0.125rem 0.375rem; font-weight: 500; background: #f3f4f6; color: #6b7280; }
+.cat-btn.active .count { background: #bfdbfe; color: #1d4ed8; }
+
+.spacer { flex: 1; }
+
+.badges-btn { width: 100%; display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 0.75rem; font-size: 0.875rem; border: none; background: none; cursor: pointer; color: #4b5563; margin-bottom: 0.25rem; transition: background 0.15s; }
+.badges-btn:hover { background: #f3f4f6; }
+.badges-btn .icon { font-size: 1rem; }
+.badges-btn .label { flex: 1; text-align: right; }
+.badges-btn .b-count { font-size: 0.75rem; background: #fef9c3; color: #a16207; border-radius: 9999px; padding: 0.125rem 0.375rem; font-weight: 500; }
+
+/* ── XP Bar ── */
+.xp-section { padding: 0.5rem; border-top: 1px solid #f3f4f6; padding-top: 0.75rem; }
+.xp-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+.xp-left { display: flex; align-items: center; gap: 0.5rem; }
+.level-circle { width: 2rem; height: 2rem; border-radius: 9999px; background: #2563eb; color: #fff; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.xp-label { font-size: 0.75rem; font-weight: 600; color: #374151; }
+.xp-sub { font-size: 0.75rem; color: #9ca3af; }
+.streak-badge { display: flex; align-items: center; gap: 0.25rem; background: #fff7ed; border-radius: 0.5rem; padding: 0.25rem 0.5rem; }
+.streak-badge .fire { font-size: 0.875rem; }
+.streak-badge .num { font-size: 0.75rem; font-weight: 700; color: #ea580c; }
+.xp-track { width: 100%; background: #e5e7eb; border-radius: 9999px; height: 0.375rem; }
+.xp-fill { background: #3b82f6; height: 0.375rem; border-radius: 9999px; transition: width 0.7s; }
+
+.done-footer { padding: 0.5rem; }
+.done-footer p { font-size: 0.75rem; color: #9ca3af; }
+.done-footer .num { font-weight: 600; color: #16a34a; }
+
+/* ── Kanban ── */
+.kanban { display: flex; gap: 1.25rem; padding: 1.5rem; height: 100%; overflow-x: auto; }
+.column { display: flex; flex-direction: column; width: 18rem; min-width: 18rem; border-radius: 1rem; padding: 1rem; background: #f3f4f6; height: calc(100vh - 96px); transition: all 0.2s; }
+.column.drag-over { background: #eff6ff; box-shadow: 0 0 0 2px #93c5fd; }
+.col-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+.col-dot { width: 0.625rem; height: 0.625rem; border-radius: 9999px; }
+.dot-gray { background: #9ca3af; } .dot-blue { background: #3b82f6; } .dot-green { background: #22c55e; }
+.col-label { font-weight: 600; font-size: 0.875rem; }
+.lbl-gray { color: #4b5563; } .lbl-blue { color: #2563eb; } .lbl-green { color: #16a34a; }
+.col-count { margin-right: auto; font-size: 0.75rem; color: #9ca3af; background: #fff; border-radius: 9999px; padding: 0.125rem 0.5rem; font-weight: 500; }
+.task-list { display: flex; flex-direction: column; gap: 0.75rem; flex: 1; overflow-y: auto; padding-left: 0.125rem; }
+.empty-col { text-align: center; color: #d1d5db; font-size: 0.875rem; padding: 2.5rem 0; border: 2px dashed #e5e7eb; border-radius: 0.75rem; }
+
+/* ── Task Card ── */
+.card { background: #fff; border-radius: 0.75rem; border: 1px solid #e5e7eb; padding: 1rem; cursor: grab; transition: box-shadow 0.15s; user-select: none; }
+.card:active { cursor: grabbing; }
+.card:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1); }
+.card-top { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+.cat-badge { font-size: 0.75rem; font-weight: 500; padding: 0.125rem 0.5rem; border-radius: 9999px; }
+.cat-work { background: #dbeafe; color: #1d4ed8; }
+.cat-home { background: #dcfce7; color: #15803d; }
+.cat-relationships { background: #fce7f3; color: #be185d; }
+.cat-learning { background: #f3e8ff; color: #7e22ce; }
+.pri-dot { width: 0.5rem; height: 0.5rem; border-radius: 9999px; flex-shrink: 0; }
+.pri-high { background: #ef4444; } .pri-medium { background: #facc15; } .pri-low { background: #d1d5db; }
+.card-actions { margin-right: auto; display: flex; gap: 0.25rem; opacity: 0; transition: opacity 0.15s; }
+.card:hover .card-actions { opacity: 1; }
+.act-btn { padding: 0.25rem; border-radius: 0.25rem; border: none; background: none; cursor: pointer; color: #9ca3af; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+.act-btn:hover { background: #f3f4f6; }
+.act-btn.complete:hover { color: #16a34a; background: #f0fdf4; }
+.act-btn.edit:hover { color: #2563eb; background: #eff6ff; }
+.act-btn.delete:hover { color: #ef4444; background: #fef2f2; }
+.act-btn svg { width: 0.875rem; height: 0.875rem; }
+.card-title { font-weight: 500; font-size: 0.875rem; line-height: 1.375; color: #111827; }
+.card-title.done { color: #9ca3af; text-decoration: line-through; }
+.card-desc { font-size: 0.75rem; color: #6b7280; margin-top: 0.375rem; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card-due { margin-top: 0.625rem; display: flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; font-weight: 500; color: #9ca3af; }
+.card-due svg { width: 0.75rem; height: 0.75rem; }
+.card-due.overdue { color: #ef4444; }
+
+/* ── Modal ── */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 50; }
+.modal { background: #fff; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); width: 100%; max-width: 28rem; padding: 1.5rem; margin: 1rem; }
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+.modal-header h2 { font-size: 1.125rem; font-weight: 700; color: #111827; }
+.close-btn { color: #9ca3af; background: none; border: none; cursor: pointer; padding: 0.25rem; transition: color 0.15s; }
+.close-btn:hover { color: #4b5563; }
+.close-btn svg { width: 1.25rem; height: 1.25rem; }
+.form-group { margin-bottom: 1rem; }
+.form-label { display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem; }
+.form-input { width: 100%; border: 1px solid #d1d5db; border-radius: 0.75rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; outline: none; transition: box-shadow 0.15s, border-color 0.15s; background: #fff; font-family: inherit; }
+.form-input:focus { box-shadow: 0 0 0 2px #3b82f6; border-color: #3b82f6; }
+textarea.form-input { resize: none; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; }
+.form-actions { display: flex; gap: 0.75rem; padding-top: 0.5rem; }
+.btn-save { flex: 1; background: #2563eb; color: #fff; border: none; border-radius: 0.75rem; padding: 0.625rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: background 0.15s; font-family: inherit; }
+.btn-save:hover { background: #1d4ed8; }
+.btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-cancel { padding: 0.625rem 1rem; font-size: 0.875rem; font-weight: 500; color: #4b5563; background: none; border: none; border-radius: 0.75rem; cursor: pointer; transition: background 0.15s; font-family: inherit; }
+.btn-cancel:hover { background: #f3f4f6; }
+
+/* ── Badges Modal ── */
+.badges-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+.badge-item { display: flex; flex-direction: column; align-items: center; gap: 0.375rem; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid; transition: all 0.15s; }
+.badge-item.earned { background: #fefce8; border-color: #fde68a; }
+.badge-item.locked { background: #f9fafb; border-color: #e5e7eb; opacity: 0.4; }
+.badge-item .emoji { font-size: 1.5rem; }
+.badge-item .b-label { font-size: 0.75rem; font-weight: 500; text-align: center; line-height: 1.25; }
+.badge-item.earned .b-label { color: #1f2937; }
+.badge-item.locked .b-label { color: #9ca3af; }
+.badges-summary { font-size: 0.75rem; color: #9ca3af; text-align: center; margin-top: 1rem; }
+
+/* ── Celebration Toast ── */
+.toast-wrap { position: fixed; bottom: 2rem; left: 0; right: 0; display: flex; justify-content: center; z-index: 50; animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.toast { background: #111827; color: #fff; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); padding: 1rem 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; min-width: 220px; }
+.toast-xp { font-size: 1.875rem; font-weight: 900; color: #facc15; }
+.toast-msg { font-size: 0.875rem; font-weight: 500; color: #e5e7eb; }
+.toast-badges { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; padding-top: 0.5rem; border-top: 1px solid #374151; width: 100%; }
+.toast-badge { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; }
+.toast-badge .emoji { font-size: 1.125rem; }
+.toast-badge .text { color: #fde047; font-weight: 500; }
+
+/* ── Dog Layer ── */
+.dog-layer { position: fixed; inset: 0; pointer-events: none; z-index: 9999; }
+.dog-wrap { position: absolute; }
+.dog-wrap.walk-move { transition: left 1.6s ease, top 1.6s ease; }
+.dog-wrap.run-move { transition: left 0.9s ease, top 0.9s ease; }
+.dog-emoji { position: absolute; left: 50%; transform: translateX(-50%); font-size: 14px; user-select: none; }
+
+/* ── Dog Animations ── */
+@keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes dogWalk { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes dogRun { 0%, 100% { transform: translateY(0); } 25% { transform: translateY(-5px); } 75% { transform: translateY(-2px); } }
+@keyframes dogEat { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-12deg); } }
+@keyframes dogSleep { 0%, 100% { opacity: 1; } 50% { opacity: 0.75; } }
+@keyframes dogPoop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+.dog--walking { animation: dogWalk 0.5s ease-in-out infinite; }
+.dog--running { animation: dogRun 0.25s ease-in-out infinite; }
+.dog--eating { animation: dogEat 0.45s ease-in-out infinite; }
+.dog--sleeping { animation: dogSleep 2s ease-in-out infinite; }
+.dog--pooping { animation: dogPoop 0.6s ease-in-out infinite; }
+
+/* ── Scrollbar ── */
+.task-list::-webkit-scrollbar { width: 4px; }
+.task-list::-webkit-scrollbar-track { background: transparent; }
+.task-list::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 9999px; }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <span class="logo-icon">✅</span>
+      <span class="logo-text">TaskFlow</span>
+    </div>
+    <button class="btn-add" id="btn-add">
+      <span class="plus">+</span>
+      <span>משימה חדשה</span>
+    </button>
+    <p class="cat-heading">קטגוריות</p>
+    <div class="cat-list" id="cat-list"></div>
+    <div class="spacer"></div>
+    <button class="badges-btn" id="btn-badges">
+      <span class="icon">🏅</span>
+      <span class="label">הישגים</span>
+      <span class="b-count" id="badges-count" style="display:none"></span>
+    </button>
+    <div id="xp-bar"></div>
+    <div id="done-footer"></div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="kanban" id="kanban"></div>
+  </main>
+</div>
+
+<!-- Task Modal -->
+<div class="overlay" id="task-overlay" style="display:none">
+  <div class="modal" dir="rtl" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2 id="modal-title">משימה חדשה</h2>
+      <button class="close-btn" id="modal-close">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form id="task-form">
+      <div class="form-group">
+        <label class="form-label">כותרת *</label>
+        <input type="text" id="f-title" class="form-input" placeholder="מה צריך לעשות?" autofocus>
+      </div>
+      <div class="form-group">
+        <label class="form-label">תיאור</label>
+        <textarea id="f-desc" class="form-input" rows="2" placeholder="פרטים נוספים..."></textarea>
+      </div>
+      <div class="form-grid">
+        <div>
+          <label class="form-label">קטגוריה</label>
+          <select id="f-cat" class="form-input">
+            <option value="work">עבודה</option>
+            <option value="home">בית / ספורט</option>
+            <option value="relationships">קשרים ומשפחה</option>
+            <option value="learning">למידה ופיתוח עצמי</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">עדיפות</label>
+          <select id="f-pri" class="form-input">
+            <option value="high">גבוהה</option>
+            <option value="medium" selected>בינונית</option>
+            <option value="low">נמוכה</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div>
+          <label class="form-label">סטטוס</label>
+          <select id="f-status" class="form-input">
+            <option value="todo">לביצוע</option>
+            <option value="inprogress">בתהליך</option>
+            <option value="done">הושלם</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">תאריך יעד</label>
+          <input type="date" id="f-due" class="form-input">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-save" id="btn-submit">הוסף משימה</button>
+        <button type="button" class="btn-cancel" id="btn-form-cancel">ביטול</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Badges Modal -->
+<div class="overlay" id="badges-overlay" style="display:none">
+  <div class="modal" dir="rtl" style="max-width:24rem" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2>🏅 הישגים</h2>
+      <button class="close-btn" id="badges-close">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="badges-grid" id="badges-grid"></div>
+    <p class="badges-summary" id="badges-summary"></p>
+  </div>
+</div>
+
+<!-- Celebration Toast -->
+<div id="toast-container" style="display:none"></div>
+
+<!-- Dog Layer -->
+<div class="dog-layer" id="dog-layer"></div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ═══════════════════════════════════════
+  // CONSTANTS
+  // ═══════════════════════════════════════
+
+  var STORAGE_TASKS = 'taskflow_tasks';
+  var STORAGE_STATS = 'taskflow_stats';
+  var STORAGE_NEXT_ID = 'taskflow_next_id';
+
+  var XP_MAP = { high: 30, medium: 20, low: 10 };
+
+  var MOTIVATIONAL = [
+    'כל הכבוד! 🙌', 'ממשיכים קדימה! 💪', 'אחד אפס! 🎯',
+    'כוחי וגבורתי! ⚡', 'מעולה, המשך כך! 🔥',
+    'צעד קדימה! 👏', 'השמיים הם הגבול 🚀',
+  ];
+
+  var ALL_BADGES = [
+    { id: 'first_task', label: 'ראשית',     emoji: '🎯', desc: 'משימה ראשונה הושלמה' },
+    { id: 'streak_3',   label: 'על הגל',    emoji: '🔥', desc: '3 ימים ברצף'         },
+    { id: 'streak_7',   label: 'שבוע שלם',  emoji: '⚡', desc: '7 ימים ברצף'         },
+    { id: 'tasks_10',   label: 'מכונה',     emoji: '💪', desc: '10 משימות הושלמו'    },
+    { id: 'tasks_50',   label: 'אלוף',      emoji: '🏆', desc: '50 משימות הושלמו'    },
+    { id: 'level_5',    label: 'עולה רמות', emoji: '⭐', desc: 'הגעת לרמה 5'          },
+    { id: 'work_5',     label: 'עובד קשה',  emoji: '💼', desc: '5 משימות עבודה'      },
+  ];
+
+  var CATEGORIES = [
+    { id: 'all',           label: 'הכל',              icon: '📋' },
+    { id: 'work',          label: 'עבודה',             icon: '💼' },
+    { id: 'home',          label: 'בית / ספורט',      icon: '🏠' },
+    { id: 'relationships', label: 'קשרים ומשפחה',     icon: '❤️' },
+    { id: 'learning',      label: 'למידה ופיתוח עצמי', icon: '📚' },
+  ];
+
+  var COLUMNS = [
+    { id: 'todo',       label: 'לביצוע',  dotCls: 'dot-gray',  lblCls: 'lbl-gray'  },
+    { id: 'inprogress', label: 'בתהליך',  dotCls: 'dot-blue',  lblCls: 'lbl-blue'  },
+    { id: 'done',       label: 'הושלם',   dotCls: 'dot-green', lblCls: 'lbl-green' },
+  ];
+
+  var CAT_COLORS = { work: 'cat-work', home: 'cat-home', relationships: 'cat-relationships', learning: 'cat-learning' };
+  var CAT_LABELS = { work: 'עבודה', home: 'בית / ספורט', relationships: 'קשרים', learning: 'למידה' };
+  var PRI_DOTS = { high: 'pri-high', medium: 'pri-medium', low: 'pri-low' };
+
+  var BREEDS = [
+    { body: '#F5A623', ear: '#C97D15', spot: null,      legLength: 12, bodyWidth: 28 },
+    { body: '#F0EFE9', ear: '#CECCBF', spot: null,      legLength: 12, bodyWidth: 26 },
+    { body: '#FFFFFF', ear: '#222222', spot: '#222222', legLength: 14, bodyWidth: 28 },
+    { body: '#E8873A', ear: '#C05010', spot: null,      legLength: 8,  bodyWidth: 30 },
+    { body: '#8B4513', ear: '#5C2E00', spot: null,      legLength: 8,  bodyWidth: 36 },
+  ];
+
+  // SVG icon templates
+  var IC_CHECK = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>';
+  var IC_EDIT = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>';
+  var IC_DELETE = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>';
+  var IC_CAL = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>';
+
+  // ═══════════════════════════════════════
+  // STATE
+  // ═══════════════════════════════════════
+
+  var tasks = [];
+  var stats = { total_xp: 0, total_completed: 0, streak: 0, last_completed_date: '', badges: [], completed_by_category: { work: 0, home: 0, relationships: 0, learning: 0 } };
+  var activeCategory = 'all';
+  var editingTaskId = null;
+  var nextId = 1;
+  var dogTimers = [];
+  var prevBreedIndex = -1;
+
+  // ═══════════════════════════════════════
+  // PERSISTENCE
+  // ═══════════════════════════════════════
+
+  function loadState() {
+    try {
+      var t = localStorage.getItem(STORAGE_TASKS);
+      if (t) tasks = JSON.parse(t);
+      var s = localStorage.getItem(STORAGE_STATS);
+      if (s) stats = JSON.parse(s);
+      var n = localStorage.getItem(STORAGE_NEXT_ID);
+      if (n) nextId = parseInt(n) || 1;
+    } catch (e) { /* fresh start */ }
+  }
+
+  function saveTasks() { localStorage.setItem(STORAGE_TASKS, JSON.stringify(tasks)); }
+  function saveStats() { localStorage.setItem(STORAGE_STATS, JSON.stringify(stats)); }
+  function saveNextId() { localStorage.setItem(STORAGE_NEXT_ID, String(nextId)); }
+
+  // ═══════════════════════════════════════
+  // GAMIFICATION
+  // ═══════════════════════════════════════
+
+  function computeLevel(xp) { return Math.min(50, Math.floor(xp / 100) + 1); }
+
+  function getToday() { return new Date().toISOString().split('T')[0]; }
+  function getYesterday() { return new Date(Date.now() - 86400000).toISOString().split('T')[0]; }
+
+  function checkNewBadges() {
+    var earned = stats.badges;
+    var tc = stats.total_completed;
+    var st = stats.streak;
+    var lv = computeLevel(stats.total_xp);
+    var cc = stats.completed_by_category;
+    return ALL_BADGES.filter(function(b) {
+      if (earned.indexOf(b.id) !== -1) return false;
+      if (b.id === 'first_task') return tc >= 1;
+      if (b.id === 'streak_3')   return st >= 3;
+      if (b.id === 'streak_7')   return st >= 7;
+      if (b.id === 'tasks_10')   return tc >= 10;
+      if (b.id === 'tasks_50')   return tc >= 50;
+      if (b.id === 'level_5')    return lv >= 5;
+      if (b.id === 'work_5')     return (cc.work || 0) >= 5;
+      return false;
+    });
+  }
+
+  function completeTask(taskId) {
+    var task = tasks.find(function(t) { return t.id === taskId; });
+    if (!task || task.status === 'done') return;
+
+    var oldLevel = computeLevel(stats.total_xp);
+    task.status = 'done';
+
+    // XP
+    var xpEarned = XP_MAP[task.priority] || 20;
+    stats.total_xp += xpEarned;
+    stats.total_completed += 1;
+
+    // Streak
+    var today = getToday();
+    var yesterday = getYesterday();
+    if (stats.last_completed_date === yesterday) stats.streak += 1;
+    else if (stats.last_completed_date === today) { /* same day */ }
+    else stats.streak = 1;
+    stats.last_completed_date = today;
+
+    // Category
+    stats.completed_by_category[task.category] = (stats.completed_by_category[task.category] || 0) + 1;
+
+    // Badges
+    var newBadges = checkNewBadges();
+    if (newBadges.length > 0) {
+      newBadges.forEach(function(b) { stats.badges.push(b.id); });
+    }
+
+    saveTasks();
+    saveStats();
+
+    // Check if breed changed
+    var newLevel = computeLevel(stats.total_xp);
+    var newBreedIndex = Math.max(0, newLevel - 1) % 5;
+    if (newBreedIndex !== prevBreedIndex) {
+      reinitDogs();
+    }
+
+    showCelebration(xpEarned, newBadges);
+    render();
+  }
+
+  // ═══════════════════════════════════════
+  // CRUD
+  // ═══════════════════════════════════════
+
+  function createTask(data) {
+    var task = {
+      id: nextId++,
+      title: data.title,
+      description: data.description || '',
+      category: data.category || 'work',
+      priority: data.priority || 'medium',
+      status: data.status || 'todo',
+      due_date: data.due_date || null,
+      created_at: new Date().toISOString()
+    };
+    tasks.unshift(task);
+    saveTasks();
+    saveNextId();
+    render();
+  }
+
+  function updateTask(id, data) {
+    var task = tasks.find(function(t) { return t.id === id; });
+    if (!task) return;
+    Object.keys(data).forEach(function(k) { task[k] = data[k]; });
+    saveTasks();
+    render();
+  }
+
+  function deleteTask(id) {
+    tasks = tasks.filter(function(t) { return t.id !== id; });
+    saveTasks();
+    render();
+  }
+
+  function moveTask(taskId, newStatus) {
+    var task = tasks.find(function(t) { return t.id === taskId; });
+    if (!task || task.status === newStatus) return;
+    if (newStatus === 'done') {
+      completeTask(taskId);
+    } else {
+      task.status = newStatus;
+      saveTasks();
+      render();
+    }
+  }
+
+  // ═══════════════════════════════════════
+  // DATE HELPERS
+  // ═══════════════════════════════════════
+
+  function formatDate(dateStr) {
+    if (!dateStr) return null;
+    var d = new Date(dateStr + 'T00:00:00');
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    return { label: d.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' }), isPast: d < today };
+  }
+
+  // ═══════════════════════════════════════
+  // RENDERING
+  // ═══════════════════════════════════════
+
+  function render() {
+    renderCategories();
+    renderKanban();
+    renderXPBar();
+    renderDoneFooter();
+    renderBadgesCount();
+  }
+
+  function renderCategories() {
+    var html = '';
+    CATEGORIES.forEach(function(cat) {
+      var count = cat.id === 'all'
+        ? tasks.filter(function(t) { return t.status !== 'done'; }).length
+        : tasks.filter(function(t) { return t.category === cat.id && t.status !== 'done'; }).length;
+      var active = activeCategory === cat.id;
+      html += '<button class="cat-btn' + (active ? ' active' : '') + '" data-cat="' + cat.id + '">';
+      html += '<span class="icon">' + cat.icon + '</span>';
+      html += '<span class="label">' + cat.label + '</span>';
+      if (count > 0) html += '<span class="count">' + count + '</span>';
+      html += '</button>';
+    });
+    document.getElementById('cat-list').innerHTML = html;
+  }
+
+  function renderKanban() {
+    var filtered = activeCategory === 'all' ? tasks : tasks.filter(function(t) { return t.category === activeCategory; });
+    var html = '';
+
+    COLUMNS.forEach(function(col) {
+      var colTasks = filtered.filter(function(t) { return t.status === col.id; });
+      html += '<div class="column" data-status="' + col.id + '">';
+      html += '<div class="col-header">';
+      html += '<span class="col-dot ' + col.dotCls + '"></span>';
+      html += '<h2 class="col-label ' + col.lblCls + '">' + col.label + '</h2>';
+      html += '<span class="col-count">' + colTasks.length + '</span>';
+      html += '</div>';
+      html += '<div class="task-list">';
+
+      colTasks.forEach(function(task) {
+        html += renderCard(task);
+      });
+
+      if (colTasks.length === 0) {
+        html += '<div class="empty-col">גרור לכאן</div>';
+      }
+
+      html += '</div></div>';
+    });
+
+    document.getElementById('kanban').innerHTML = html;
+    bindDragDrop();
+  }
+
+  function renderCard(task) {
+    var catCls = CAT_COLORS[task.category] || 'cat-work';
+    var catLabel = CAT_LABELS[task.category] || 'עבודה';
+    var priCls = PRI_DOTS[task.priority] || 'pri-medium';
+    var isDone = task.status === 'done';
+    var due = formatDate(task.due_date);
+    var h = '';
+
+    h += '<div class="card" draggable="true" data-id="' + task.id + '">';
+    h += '<div class="card-top">';
+    h += '<span class="cat-badge ' + catCls + '">' + catLabel + '</span>';
+    h += '<span class="pri-dot ' + priCls + '"></span>';
+    h += '<div class="card-actions">';
+    if (!isDone) h += '<button class="act-btn complete" data-action="complete" data-id="' + task.id + '" title="סמן כהושלם">' + IC_CHECK + '</button>';
+    h += '<button class="act-btn edit" data-action="edit" data-id="' + task.id + '" title="ערוך">' + IC_EDIT + '</button>';
+    h += '<button class="act-btn delete" data-action="delete" data-id="' + task.id + '" title="מחק">' + IC_DELETE + '</button>';
+    h += '</div></div>';
+    h += '<p class="card-title' + (isDone ? ' done' : '') + '">' + escapeHtml(task.title) + '</p>';
+    if (task.description) h += '<p class="card-desc">' + escapeHtml(task.description) + '</p>';
+    if (due) {
+      var overdue = due.isPast && !isDone ? ' overdue' : '';
+      h += '<div class="card-due' + overdue + '">' + IC_CAL + ' ' + due.label + '</div>';
+    }
+    h += '</div>';
+    return h;
+  }
+
+  function escapeHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function renderXPBar() {
+    var level = computeLevel(stats.total_xp);
+    var xpInLevel = stats.total_xp % 100;
+    var pct = Math.round((xpInLevel / 100) * 100);
+    var streak = stats.streak;
+
+    var h = '<div class="xp-section">';
+    h += '<div class="xp-top">';
+    h += '<div class="xp-left">';
+    h += '<div class="level-circle">' + level + '</div>';
+    h += '<div><p class="xp-label">רמה ' + level + '</p><p class="xp-sub">' + xpInLevel + '/100 XP</p></div>';
+    h += '</div>';
+    if (streak > 0) h += '<div class="streak-badge"><span class="fire">🔥</span><span class="num">' + streak + '</span></div>';
+    h += '</div>';
+    h += '<div class="xp-track"><div class="xp-fill" style="width:' + pct + '%"></div></div>';
+    h += '</div>';
+
+    document.getElementById('xp-bar').innerHTML = h;
+  }
+
+  function renderDoneFooter() {
+    var doneCount = tasks.filter(function(t) { return t.status === 'done'; }).length;
+    var el = document.getElementById('done-footer');
+    if (doneCount > 0) {
+      el.innerHTML = '<div class="done-footer"><p><span class="num">' + doneCount + '</span> הושלמו</p></div>';
+    } else {
+      el.innerHTML = '';
+    }
+  }
+
+  function renderBadgesCount() {
+    var el = document.getElementById('badges-count');
+    if (stats.badges.length > 0) {
+      el.textContent = stats.badges.length;
+      el.style.display = '';
+    } else {
+      el.style.display = 'none';
+    }
+  }
+
+  // ═══════════════════════════════════════
+  // DRAG AND DROP
+  // ═══════════════════════════════════════
+
+  function bindDragDrop() {
+    var columns = document.querySelectorAll('.column');
+    columns.forEach(function(col) {
+      col.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        col.classList.add('drag-over');
+        // Update empty text
+        var empty = col.querySelector('.empty-col');
+        if (empty) empty.textContent = 'שחרור כאן';
+      });
+      col.addEventListener('dragleave', function(e) {
+        if (!col.contains(e.relatedTarget)) {
+          col.classList.remove('drag-over');
+          var empty = col.querySelector('.empty-col');
+          if (empty) empty.textContent = 'גרור לכאן';
+        }
+      });
+      col.addEventListener('drop', function(e) {
+        e.preventDefault();
+        col.classList.remove('drag-over');
+        var taskId = parseInt(e.dataTransfer.getData('taskId'));
+        var status = col.getAttribute('data-status');
+        if (taskId) moveTask(taskId, status);
+      });
+    });
+
+    var cards = document.querySelectorAll('.card');
+    cards.forEach(function(card) {
+      card.addEventListener('dragstart', function(e) {
+        e.dataTransfer.setData('taskId', card.getAttribute('data-id'));
+        e.dataTransfer.effectAllowed = 'move';
+      });
+    });
+  }
+
+  // ═══════════════════════════════════════
+  // MODALS
+  // ═══════════════════════════════════════
+
+  function openAddModal() {
+    editingTaskId = null;
+    document.getElementById('modal-title').textContent = 'משימה חדשה';
+    document.getElementById('btn-submit').textContent = 'הוסף משימה';
+    document.getElementById('f-title').value = '';
+    document.getElementById('f-desc').value = '';
+    document.getElementById('f-cat').value = 'work';
+    document.getElementById('f-pri').value = 'medium';
+    document.getElementById('f-status').value = 'todo';
+    document.getElementById('f-due').value = '';
+    document.getElementById('task-overlay').style.display = '';
+    setTimeout(function() { document.getElementById('f-title').focus(); }, 50);
+  }
+
+  function openEditModal(taskId) {
+    var task = tasks.find(function(t) { return t.id === taskId; });
+    if (!task) return;
+    editingTaskId = taskId;
+    document.getElementById('modal-title').textContent = 'עריכת משימה';
+    document.getElementById('btn-submit').textContent = 'שמור שינויים';
+    document.getElementById('f-title').value = task.title;
+    document.getElementById('f-desc').value = task.description || '';
+    document.getElementById('f-cat').value = task.category;
+    document.getElementById('f-pri').value = task.priority;
+    document.getElementById('f-status').value = task.status;
+    document.getElementById('f-due').value = task.due_date || '';
+    document.getElementById('task-overlay').style.display = '';
+    setTimeout(function() { document.getElementById('f-title').focus(); }, 50);
+  }
+
+  function closeTaskModal() {
+    document.getElementById('task-overlay').style.display = 'none';
+    editingTaskId = null;
+  }
+
+  function handleFormSubmit(e) {
+    e.preventDefault();
+    var title = document.getElementById('f-title').value.trim();
+    if (!title) return;
+    var data = {
+      title: title,
+      description: document.getElementById('f-desc').value,
+      category: document.getElementById('f-cat').value,
+      priority: document.getElementById('f-pri').value,
+      status: document.getElementById('f-status').value,
+      due_date: document.getElementById('f-due').value || null,
+    };
+    if (editingTaskId) {
+      updateTask(editingTaskId, data);
+    } else {
+      createTask(data);
+    }
+    closeTaskModal();
+  }
+
+  function openBadgesModal() {
+    var grid = document.getElementById('badges-grid');
+    var h = '';
+    ALL_BADGES.forEach(function(badge) {
+      var isEarned = stats.badges.indexOf(badge.id) !== -1;
+      h += '<div class="badge-item ' + (isEarned ? 'earned' : 'locked') + '" title="' + badge.desc + '">';
+      h += '<span class="emoji">' + (isEarned ? badge.emoji : '🔒') + '</span>';
+      h += '<span class="b-label">' + badge.label + '</span>';
+      h += '</div>';
+    });
+    grid.innerHTML = h;
+    document.getElementById('badges-summary').textContent = stats.badges.length + ' / ' + ALL_BADGES.length + ' הישגים';
+    document.getElementById('badges-overlay').style.display = '';
+  }
+
+  function closeBadgesModal() {
+    document.getElementById('badges-overlay').style.display = 'none';
+  }
+
+  // ═══════════════════════════════════════
+  // CELEBRATION TOAST
+  // ═══════════════════════════════════════
+
+  function showCelebration(xpEarned, newBadges) {
+    var msg = MOTIVATIONAL[Math.floor(Math.random() * MOTIVATIONAL.length)];
+    var h = '<div class="toast-wrap"><div class="toast" dir="rtl">';
+    h += '<div class="toast-xp">+' + xpEarned + ' XP</div>';
+    h += '<p class="toast-msg">' + msg + '</p>';
+    if (newBadges.length > 0) {
+      h += '<div class="toast-badges">';
+      newBadges.forEach(function(b) {
+        h += '<div class="toast-badge"><span class="emoji">' + b.emoji + '</span><span class="text">הישג חדש: ' + b.label + '!</span></div>';
+      });
+      h += '</div>';
+    }
+    h += '</div></div>';
+    var container = document.getElementById('toast-container');
+    container.innerHTML = h;
+    container.style.display = '';
+    setTimeout(function() { container.style.display = 'none'; container.innerHTML = ''; }, 3000);
+  }
+
+  // ═══════════════════════════════════════
+  // DOG SYSTEM
+  // ═══════════════════════════════════════
+
+  function createDogSVG(breed) {
+    var bx = 8, by = 26, brx = breed.bodyWidth / 2, bry = 7;
+    var hx = bx + brx * 2 - 4, hy = by - bry - 3, hr = 10;
+    var legY = by + bry - 1;
+    var legs = [bx + brx * 0.35, bx + brx * 0.75, bx + brx * 1.25, bx + brx * 1.65];
+
+    var s = '<svg width="60" height="48" viewBox="0 0 60 48" style="display:block">';
+    // Tail
+    s += '<path d="M' + (bx+2) + ',' + (by-2) + ' Q' + (bx-5) + ',' + (by-11) + ' ' + bx + ',' + (by-17) + '" stroke="' + breed.ear + '" stroke-width="3.5" fill="none" stroke-linecap="round"/>';
+    // Body
+    s += '<ellipse cx="' + (bx+brx) + '" cy="' + by + '" rx="' + brx + '" ry="' + bry + '" fill="' + breed.body + '"/>';
+    // Spots
+    if (breed.spot) {
+      s += '<circle cx="' + (bx+brx-5) + '" cy="' + (by-2) + '" r="3.5" fill="' + breed.spot + '" opacity="0.9"/>';
+      s += '<circle cx="' + (bx+brx+5) + '" cy="' + (by+2) + '" r="2.5" fill="' + breed.spot + '" opacity="0.9"/>';
+    }
+    // Legs
+    legs.forEach(function(lx) {
+      s += '<rect x="' + (lx-2.5) + '" y="' + legY + '" width="5" height="' + breed.legLength + '" rx="2" fill="' + breed.body + '"/>';
+    });
+    // Head
+    s += '<circle cx="' + hx + '" cy="' + hy + '" r="' + hr + '" fill="' + breed.body + '"/>';
+    // Ear
+    var ecx = hx - hr * 0.45, ecy = hy - hr * 0.3;
+    s += '<ellipse cx="' + ecx + '" cy="' + ecy + '" rx="' + (hr*0.38) + '" ry="' + (hr*0.62) + '" fill="' + breed.ear + '" transform="rotate(-20 ' + ecx + ' ' + ecy + ')"/>';
+    // Eye
+    s += '<circle cx="' + (hx+3) + '" cy="' + hy + '" r="2" fill="#1a1a1a"/>';
+    s += '<circle cx="' + (hx+3.7) + '" cy="' + (hy-0.8) + '" r="0.7" fill="white"/>';
+    // Nose
+    s += '<ellipse cx="' + (hx+hr*0.78) + '" cy="' + (hy+2.5) + '" rx="2.8" ry="2" fill="#1a1a1a"/>';
+    // Smile
+    s += '<path d="M' + (hx+hr*0.6) + ',' + (hy+5) + ' Q' + (hx+hr*0.78) + ',' + (hy+7) + ' ' + (hx+hr*0.95) + ',' + (hy+5) + '" stroke="#1a1a1a" stroke-width="1.2" fill="none" stroke-linecap="round"/>';
+    s += '</svg>';
+    return s;
+  }
+
+  function initDogs() {
+    var level = computeLevel(stats.total_xp);
+    var breedIndex = Math.max(0, level - 1) % 5;
+    prevBreedIndex = breedIndex;
+    var breed = BREEDS[breedIndex];
+    var layer = document.getElementById('dog-layer');
+    layer.innerHTML = '';
+    dogTimers.forEach(function(t) { clearTimeout(t); });
+    dogTimers = [];
+
+    for (var i = 0; i < 3; i++) {
+      (function(index) {
+        var startX = Math.max(20, Math.min(window.innerWidth - 80, (window.innerWidth * (index + 1)) / 4));
+        var startY = Math.max(20, Math.min(window.innerHeight - 80, (window.innerHeight * (index + 1)) / 4));
+
+        var wrap = document.createElement('div');
+        wrap.className = 'dog-wrap';
+        wrap.style.left = startX + 'px';
+        wrap.style.top = startY + 'px';
+        wrap.setAttribute('data-dog', index);
+
+        var facingDiv = document.createElement('div');
+        facingDiv.style.display = 'inline-block';
+        facingDiv.style.transform = 'scaleX(1)';
+
+        var animDiv = document.createElement('div');
+        animDiv.className = 'dog--walking';
+        animDiv.innerHTML = createDogSVG(breed);
+
+        facingDiv.appendChild(animDiv);
+        wrap.appendChild(facingDiv);
+        layer.appendChild(wrap);
+
+        var pos = { x: startX, y: startY };
+        var facing = 'right';
+
+        function tick() {
+          var r = Math.random();
+          var next;
+          if (r < 0.35) next = 'walking';
+          else if (r < 0.58) next = 'running';
+          else if (r < 0.73) next = 'eating';
+          else if (r < 0.85) next = 'sleeping';
+          else next = 'pooping';
+
+          animDiv.className = 'dog--' + next;
+
+          // Remove old emoji
+          var oldEmoji = wrap.querySelector('.dog-emoji');
+          if (oldEmoji) oldEmoji.remove();
+
+          if (next === 'walking' || next === 'running') {
+            var range = next === 'walking' ? 200 : 380;
+            var rangeY = next === 'walking' ? 140 : 260;
+            var dx = (Math.random() - 0.5) * range;
+            var dy = (Math.random() - 0.5) * rangeY;
+            var newX = Math.max(20, Math.min(window.innerWidth - 80, pos.x + dx));
+            var newY = Math.max(20, Math.min(window.innerHeight - 80, pos.y + dy));
+
+            wrap.className = 'dog-wrap ' + (next === 'running' ? 'run-move' : 'walk-move');
+            wrap.style.left = newX + 'px';
+            wrap.style.top = newY + 'px';
+
+            if (newX !== pos.x) {
+              facing = newX < pos.x ? 'left' : 'right';
+              facingDiv.style.transform = 'scaleX(' + (facing === 'left' ? -1 : 1) + ')';
+            }
+            pos.x = newX;
+            pos.y = newY;
+
+            var delay = next === 'walking' ? (2000 + Math.random() * 1500) : (1200 + Math.random() * 800);
+            dogTimers.push(setTimeout(tick, delay));
+          } else if (next === 'eating') {
+            dogTimers.push(setTimeout(tick, 3000 + Math.random() * 2000));
+          } else if (next === 'sleeping') {
+            var emoji = document.createElement('span');
+            emoji.className = 'dog-emoji';
+            emoji.style.top = '-22px';
+            emoji.textContent = '💤';
+            wrap.appendChild(emoji);
+            dogTimers.push(setTimeout(tick, 4500 + Math.random() * 3000));
+          } else { // pooping
+            var emoji2 = document.createElement('span');
+            emoji2.className = 'dog-emoji';
+            emoji2.style.top = '44px';
+            emoji2.textContent = '💩';
+            wrap.appendChild(emoji2);
+            dogTimers.push(setTimeout(tick, 2000 + Math.random() * 2000));
+          }
+        }
+
+        dogTimers.push(setTimeout(tick, 600 + index * 500));
+      })(i);
+    }
+  }
+
+  function reinitDogs() {
+    dogTimers.forEach(function(t) { clearTimeout(t); });
+    dogTimers = [];
+    initDogs();
+  }
+
+  // ═══════════════════════════════════════
+  // EVENT DELEGATION
+  // ═══════════════════════════════════════
+
+  document.getElementById('kanban').addEventListener('click', function(e) {
+    var btn = e.target.closest('.act-btn');
+    if (!btn) return;
+    e.stopPropagation();
+    var action = btn.getAttribute('data-action');
+    var id = parseInt(btn.getAttribute('data-id'));
+    if (action === 'complete') completeTask(id);
+    else if (action === 'edit') openEditModal(id);
+    else if (action === 'delete') deleteTask(id);
+  });
+
+  document.getElementById('cat-list').addEventListener('click', function(e) {
+    var btn = e.target.closest('.cat-btn');
+    if (!btn) return;
+    activeCategory = btn.getAttribute('data-cat');
+    render();
+  });
+
+  // ═══════════════════════════════════════
+  // INIT
+  // ═══════════════════════════════════════
+
+  function init() {
+    loadState();
+
+    // Bind static listeners
+    document.getElementById('btn-add').addEventListener('click', openAddModal);
+    document.getElementById('btn-badges').addEventListener('click', openBadgesModal);
+    document.getElementById('modal-close').addEventListener('click', closeTaskModal);
+    document.getElementById('btn-form-cancel').addEventListener('click', closeTaskModal);
+    document.getElementById('badges-close').addEventListener('click', closeBadgesModal);
+    document.getElementById('task-form').addEventListener('submit', handleFormSubmit);
+
+    document.getElementById('task-overlay').addEventListener('click', function(e) {
+      if (e.target === this) closeTaskModal();
+    });
+    document.getElementById('badges-overlay').addEventListener('click', function(e) {
+      if (e.target === this) closeBadgesModal();
+    });
+
+    render();
+    initDogs();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+})();
+</script>
+</body>
+</html>
