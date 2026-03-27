@@ -4,9 +4,9 @@ A gamified task manager with a Hebrew RTL interface, kanban board, XP & leveling
 
 ## Try It Now
 
-**No installation needed** — just open [`demo.html`](demo.html) in your browser!
+**[Live Demo](https://bjbodner.github.io/task-manager-v2/)** — no installation needed, runs entirely in your browser!
 
-The demo is a single self-contained HTML file with zero dependencies. It uses localStorage to persist your tasks and progress.
+Or download [`demo.html`](demo.html) and open it locally. The demo is a single self-contained HTML file with zero dependencies. It uses localStorage to persist your tasks and progress.
 
 ## Features
 
